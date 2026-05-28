@@ -40,15 +40,33 @@ namespace KRPC.MechJeb {
 		public virtual bool Enabled {
 			get => (bool)enabled.GetValue(this.instance, null);
 			set {
-				if(value)
-					UserPool.usersAdd.Invoke(this.users, new object[] { this });
-				else
-					UserPool.usersRemove.Invoke(this.users, new object[] { this });
+				SetModuleEnabled(this.instance, this.users, this, value);
 			}
 		}
 
 		internal void OnFixedUpdate() {
 			onFixedUpdate.Invoke(this.instance, null);
+		}
+
+		protected static bool GetModuleEnabled(object moduleInstance) {
+			if(moduleInstance == null)
+				return false;
+
+			return (bool)enabled.GetValue(moduleInstance, null);
+		}
+
+		protected static object GetUsers(object moduleInstance) {
+			return usersField.GetInstanceValue(moduleInstance);
+		}
+
+		protected static void SetModuleEnabled(object moduleInstance, object users, object user, bool value) {
+			if(moduleInstance == null || users == null)
+				return;
+
+			if(value)
+				UserPool.usersAdd.Invoke(users, new object[] { user });
+			else
+				UserPool.usersRemove.Invoke(users, new object[] { user });
 		}
 
 		private static class UserPool {

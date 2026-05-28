@@ -85,19 +85,21 @@ namespace KRPC.MechJeb.Maneuver {
 		// Fields and methods
 		private static FieldInfo allowedTimeRefField;
 		private static FieldInfo currentTimeRef;
+		private static PropertyInfo timeReference;
 		private static FieldInfo leadTimeField;
 		private static FieldInfo circularizeAltitudeField;
 
 		// Instance objects
 		internal object instance;
 
-		private int[] allowedTimeRef; //MuMech.TimeReference enum
+		private Array allowedTimeRef; // MuMech.TimeReference enum or int array
 		private object leadTime;
 		private object circularizeAltitude;
 
 		internal static void InitType(Type type) {
-			allowedTimeRefField = type.GetCheckedField("allowedTimeRef", BindingFlags.NonPublic | BindingFlags.Instance);
-			currentTimeRef = type.GetCheckedField("currentTimeRef", BindingFlags.NonPublic | BindingFlags.Instance);
+			allowedTimeRefField = type.GetOptionalField("allowedTimeRef");
+			currentTimeRef = type.GetOptionalField("currentTimeRef");
+			timeReference = type.GetOptionalProperty("TimeReference");
 			leadTimeField = type.GetCheckedField("leadTime");
 			circularizeAltitudeField = type.GetCheckedField("circularizeAltitude");
 		}
@@ -105,20 +107,33 @@ namespace KRPC.MechJeb.Maneuver {
 		protected internal void InitInstance(object instance) {
 			this.instance = instance;
 
-			this.allowedTimeRef = (int[])allowedTimeRefField.GetInstanceValue(instance);
+			this.allowedTimeRef = (Array)allowedTimeRefField.GetInstanceValue(instance);
 			this.leadTime = leadTimeField.GetInstanceValue(instance);
 			this.circularizeAltitude = circularizeAltitudeField.GetInstanceValue(instance);
 		}
 
 		[KRPCProperty]
 		public TimeReference TimeReference {
-			get => (TimeReference)this.allowedTimeRef[(int)currentTimeRef.GetValue(this.instance)];
-			set => currentTimeRef.SetValue(this.instance, this.GetTimeRefIndex(value));
+			get {
+				if(currentTimeRef != null)
+					return (TimeReference)Convert.ToInt32(this.allowedTimeRef.GetValue((int)currentTimeRef.GetValue(this.instance)));
+
+				return (TimeReference)Convert.ToInt32(timeReference.GetValue(this.instance, null));
+			}
+			set {
+				if(currentTimeRef != null)
+					currentTimeRef.SetValue(this.instance, this.GetTimeRefIndex(value));
+				else
+					timeReference.SetValue(this.instance, Enum.ToObject(timeReference.PropertyType, (int)value), null);
+			}
 		}
 
 		private int GetTimeRefIndex(TimeReference timeRef) {
+			if(this.allowedTimeRef == null)
+				return (int)timeRef;
+
 			for(int i = 0; i < this.allowedTimeRef.Length; i++)
-				if(this.allowedTimeRef[i] == (int)timeRef)
+				if(Convert.ToInt32(this.allowedTimeRef.GetValue(i)) == (int)timeRef)
 					return i;
 			throw new OperationException("This TimeReference is not allowed: " + timeRef);
 		}

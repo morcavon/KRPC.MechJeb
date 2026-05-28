@@ -15,6 +15,7 @@ namespace KRPC.MechJeb {
 	[KRPCClass(Service = "MechJeb")]
 	public class AscentGT : AscentBase {
 		internal new const string MechJebType = "MuMech.MechJebModuleAscentGT";
+		internal static readonly string[] MechJebTypeAliases = { "MuMech.MechJebModuleAscentSettings" };
 
 		// Fields and methods
 		private static FieldInfo turnStartAltitudeField;
@@ -22,6 +23,7 @@ namespace KRPC.MechJeb {
 		private static FieldInfo turnStartPitchField;
 		private static FieldInfo intermediateAltitudeField;
 		private static FieldInfo holdAPTimeField;
+		private static bool available;
 
 		// Instance objects
 		private object turnStartAltitude;
@@ -31,11 +33,12 @@ namespace KRPC.MechJeb {
 		private object holdAPTime;
 
 		internal static new void InitType(Type type) {
-			turnStartAltitudeField = type.GetCheckedField("turnStartAltitude");
-			turnStartVelocityField = type.GetCheckedField("turnStartVelocity");
-			turnStartPitchField = type.GetCheckedField("turnStartPitch");
-			intermediateAltitudeField = type.GetCheckedField("intermediateAltitude");
-			holdAPTimeField = type.GetCheckedField("holdAPTime");
+			available = type.FullName == MechJebType;
+			turnStartAltitudeField = type.GetOptionalField("turnStartAltitude");
+			turnStartVelocityField = type.GetOptionalField("turnStartVelocity");
+			turnStartPitchField = type.GetOptionalField("turnStartPitch");
+			intermediateAltitudeField = type.GetOptionalField("intermediateAltitude");
+			holdAPTimeField = type.GetOptionalField("holdAPTime");
 		}
 
 		protected internal override void InitInstance(object instance) {
@@ -52,8 +55,8 @@ namespace KRPC.MechJeb {
 		/// </summary>
 		[KRPCProperty]
 		public double TurnStartAltitude {
-			get => EditableDouble.Get(this.turnStartAltitude);
-			set => EditableDouble.Set(this.turnStartAltitude, value);
+			get => GetEditableDouble(this.turnStartAltitude, nameof(TurnStartAltitude));
+			set => SetEditableDouble(this.turnStartAltitude, value, nameof(TurnStartAltitude));
 		}
 
 		/// <summary>
@@ -61,8 +64,8 @@ namespace KRPC.MechJeb {
 		/// </summary>
 		[KRPCProperty]
 		public double TurnStartVelocity {
-			get => EditableDouble.Get(this.turnStartVelocity);
-			set => EditableDouble.Set(this.turnStartVelocity, value);
+			get => GetEditableDouble(this.turnStartVelocity, nameof(TurnStartVelocity));
+			set => SetEditableDouble(this.turnStartVelocity, value, nameof(TurnStartVelocity));
 		}
 
 		/// <summary>
@@ -70,8 +73,8 @@ namespace KRPC.MechJeb {
 		/// </summary>
 		[KRPCProperty]
 		public double TurnStartPitch {
-			get => EditableDouble.Get(this.turnStartPitch);
-			set => EditableDouble.Set(this.turnStartPitch, value);
+			get => GetEditableDouble(this.turnStartPitch, nameof(TurnStartPitch));
+			set => SetEditableDouble(this.turnStartPitch, value, nameof(TurnStartPitch));
 		}
 
 		/// <summary>
@@ -79,8 +82,8 @@ namespace KRPC.MechJeb {
 		/// </summary>
 		[KRPCProperty]
 		public double IntermediateAltitude {
-			get => EditableDouble.Get(this.intermediateAltitude);
-			set => EditableDouble.Set(this.intermediateAltitude, value);
+			get => GetEditableDouble(this.intermediateAltitude, nameof(IntermediateAltitude));
+			set => SetEditableDouble(this.intermediateAltitude, value, nameof(IntermediateAltitude));
 		}
 
 		/// <summary>
@@ -90,8 +93,22 @@ namespace KRPC.MechJeb {
 		/// </summary>
 		[KRPCProperty]
 		public double HoldAPTime {
-			get => EditableDouble.Get(this.holdAPTime);
-			set => EditableDouble.Set(this.holdAPTime, value);
+			get => GetEditableDouble(this.holdAPTime, nameof(HoldAPTime));
+			set => SetEditableDouble(this.holdAPTime, value, nameof(HoldAPTime));
+		}
+
+		private static double GetEditableDouble(object value, string memberName) {
+			if(!available || value == null)
+				throw new MJServiceException("This feature is not available in this MechJeb version: AscentGT." + memberName);
+
+			return EditableDouble.Get(value);
+		}
+
+		private static void SetEditableDouble(object target, double value, string memberName) {
+			if(!available || target == null)
+				throw new MJServiceException("This feature is not available in this MechJeb version: AscentGT." + memberName);
+
+			EditableDouble.Set(target, value);
 		}
 	}
 }

@@ -11,6 +11,7 @@ namespace KRPC.MechJeb {
 	[KRPCClass(Service = "MechJeb")]
 	public class AscentPVG : AscentBase {
 		internal new const string MechJebType = "MuMech.MechJebModuleAscentPVG";
+		internal static readonly string[] MechJebTypeAliases = { "MuMech.MechJebModuleAscentSettings" };
 
 		// Fields and methods
 		private static FieldInfo pitchStartVelocityField;
@@ -34,16 +35,16 @@ namespace KRPC.MechJeb {
 		private object fixedCoastLength;
 
 		internal static new void InitType(Type type) {
-			pitchStartVelocityField = type.GetCheckedField("PitchStartVelocity");
-			pitchRateField = type.GetCheckedField("PitchRate");
-			desiredApoapsisField = type.GetCheckedField("DesiredApoapsis");
-			attachAltFlag = type.GetCheckedField("AttachAltFlag");
-			desiredAttachAltField = type.GetCheckedField("DesiredAttachAlt");
-			dynamicPressureTriggerField = type.GetCheckedField("DynamicPressureTrigger");
-			stagingTriggerField = type.GetCheckedField("StagingTrigger");
-			stagingTriggerFlag = type.GetCheckedField("StagingTriggerFlag");
-			fixedCoast = type.GetCheckedField("FixedCoast");
-			fixedCoastLengthField = type.GetCheckedField("FixedCoastLength");
+			pitchStartVelocityField = type.GetOptionalField("PitchStartVelocity");
+			pitchRateField = type.GetOptionalField("PitchRate");
+			desiredApoapsisField = type.GetOptionalField("DesiredApoapsis");
+			attachAltFlag = type.GetOptionalField("AttachAltFlag");
+			desiredAttachAltField = type.GetOptionalField("DesiredAttachAlt");
+			dynamicPressureTriggerField = type.GetOptionalField("DynamicPressureTrigger");
+			stagingTriggerField = type.GetOptionalField("StagingTrigger");
+			stagingTriggerFlag = type.GetOptionalField("StagingTriggerFlag");
+			fixedCoast = type.GetOptionalField("FixedCoast");
+			fixedCoastLengthField = type.GetOptionalField("FixedCoastLength");
 		}
 
 		protected internal override void InitInstance(object instance) {
@@ -60,14 +61,14 @@ namespace KRPC.MechJeb {
 
 		[KRPCProperty]
 		public double PitchStartVelocity {
-			get => EditableDouble.Get(this.pitchStartVelocity);
-			set => EditableDouble.Set(this.pitchStartVelocity, value);
+			get => GetEditableDouble(this.pitchStartVelocity, nameof(PitchStartVelocity));
+			set => SetEditableDouble(this.pitchStartVelocity, value, nameof(PitchStartVelocity));
 		}
 
 		[KRPCProperty]
 		public double PitchRate {
-			get => EditableDouble.Get(this.pitchRate);
-			set => EditableDouble.Set(this.pitchRate, value);
+			get => GetEditableDouble(this.pitchRate, nameof(PitchRate));
+			set => SetEditableDouble(this.pitchRate, value, nameof(PitchRate));
 		}
 
 		/// <summary>
@@ -75,50 +76,92 @@ namespace KRPC.MechJeb {
 		/// </summary>
 		[KRPCProperty]
 		public double DesiredApoapsis {
-			get => EditableDouble.Get(this.desiredApoapsis);
-			set => EditableDouble.Set(this.desiredApoapsis, value);
+			get => GetEditableDouble(this.desiredApoapsis, nameof(DesiredApoapsis));
+			set => SetEditableDouble(this.desiredApoapsis, value, nameof(DesiredApoapsis));
 		}
 
 		[KRPCProperty]
 		public bool AttachAltFlag {
-			get => (bool)attachAltFlag.GetValue(this.instance);
-			set => attachAltFlag.SetValue(this.instance, value);
+			get => GetBoolean(attachAltFlag, nameof(AttachAltFlag));
+			set => SetBoolean(attachAltFlag, value, nameof(AttachAltFlag));
 		}
 
 		[KRPCProperty]
 		public double DesiredAttachAlt {
-			get => EditableDouble.Get(this.desiredAttachAlt);
-			set => EditableDouble.Set(this.desiredAttachAlt, value);
+			get => GetEditableDouble(this.desiredAttachAlt, nameof(DesiredAttachAlt));
+			set => SetEditableDouble(this.desiredAttachAlt, value, nameof(DesiredAttachAlt));
 		}
 
 		[KRPCProperty]
 		public double DynamicPressureTrigger {
-			get => EditableDouble.Get(this.dynamicPressureTrigger);
-			set => EditableDouble.Set(this.dynamicPressureTrigger, value);
+			get => GetEditableDouble(this.dynamicPressureTrigger, nameof(DynamicPressureTrigger));
+			set => SetEditableDouble(this.dynamicPressureTrigger, value, nameof(DynamicPressureTrigger));
 		}
 
 		[KRPCProperty]
 		public int StagingTrigger {
-			get => EditableInt.Get(this.stagingTrigger);
-			set => EditableInt.Set(this.stagingTrigger, value);
+			get => GetEditableInt(this.stagingTrigger, nameof(StagingTrigger));
+			set => SetEditableInt(this.stagingTrigger, value, nameof(StagingTrigger));
 		}
 
 		[KRPCProperty]
 		public bool StagingTriggerFlag {
-			get => (bool)stagingTriggerFlag.GetValue(this.instance);
-			set => stagingTriggerFlag.SetValue(this.instance, value);
+			get => GetBoolean(stagingTriggerFlag, nameof(StagingTriggerFlag));
+			set => SetBoolean(stagingTriggerFlag, value, nameof(StagingTriggerFlag));
 		}
 
 		[KRPCProperty]
 		public bool FixedCoast {
-			get => (bool)fixedCoast.GetValue(this.instance);
-			set => fixedCoast.SetValue(this.instance, value);
+			get => GetBoolean(fixedCoast, nameof(FixedCoast));
+			set => SetBoolean(fixedCoast, value, nameof(FixedCoast));
 		}
 
 		[KRPCProperty]
 		public double FixedCoastLength {
-			get => EditableDouble.Get(this.fixedCoastLength);
-			set => EditableDouble.Set(this.fixedCoastLength, value);
+			get => GetEditableDouble(this.fixedCoastLength, nameof(FixedCoastLength));
+			set => SetEditableDouble(this.fixedCoastLength, value, nameof(FixedCoastLength));
+		}
+
+		private static double GetEditableDouble(object value, string memberName) {
+			if(value == null)
+				throw new MJServiceException("This feature is not available in this MechJeb version: AscentPVG." + memberName);
+
+			return EditableDouble.Get(value);
+		}
+
+		private static void SetEditableDouble(object target, double value, string memberName) {
+			if(target == null)
+				throw new MJServiceException("This feature is not available in this MechJeb version: AscentPVG." + memberName);
+
+			EditableDouble.Set(target, value);
+		}
+
+		private static int GetEditableInt(object value, string memberName) {
+			if(value == null)
+				throw new MJServiceException("This feature is not available in this MechJeb version: AscentPVG." + memberName);
+
+			return EditableInt.Get(value);
+		}
+
+		private static void SetEditableInt(object target, int value, string memberName) {
+			if(target == null)
+				throw new MJServiceException("This feature is not available in this MechJeb version: AscentPVG." + memberName);
+
+			EditableInt.Set(target, value);
+		}
+
+		private bool GetBoolean(FieldInfo field, string memberName) {
+			if(field == null)
+				throw new MJServiceException("This feature is not available in this MechJeb version: AscentPVG." + memberName);
+
+			return (bool)field.GetValue(this.instance);
+		}
+
+		private void SetBoolean(FieldInfo field, bool value, string memberName) {
+			if(field == null)
+				throw new MJServiceException("This feature is not available in this MechJeb version: AscentPVG." + memberName);
+
+			field.SetValue(this.instance, value);
 		}
 	}
 }

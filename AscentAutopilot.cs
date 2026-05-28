@@ -8,6 +8,7 @@ using KRPC.Service.Attributes;
 namespace KRPC.MechJeb {
 	internal static class AscentGuidance {
 		internal new const string MechJebType = "MuMech.MechJebModuleAscentGuidance";
+		internal static readonly string[] MechJebTypeAliases = { "MuMech.MechJebModuleAscentSettings" };
 
 		// Fields and methods
 		internal static FieldInfo desiredInclination;
@@ -15,9 +16,9 @@ namespace KRPC.MechJeb {
 		internal static FieldInfo launchingToRendezvous;
 
 		internal static void InitType(Type type) {
-			desiredInclination = type.GetField("desiredInclination");
-			launchingToPlane = type.GetField("launchingToPlane");
-			launchingToRendezvous = type.GetField("launchingToRendezvous");
+			desiredInclination = type.GetCheckedField("desiredInclination");
+			launchingToPlane = type.GetCheckedField("launchingToPlane");
+			launchingToRendezvous = type.GetCheckedField("launchingToRendezvous");
 		}
 	}
 
@@ -30,10 +31,13 @@ namespace KRPC.MechJeb {
 	[KRPCClass(Service = "MechJeb")]
 	public class AscentAutopilot : KRPCComputerModule {
 		internal new const string MechJebType = "MuMech.MechJebModuleAscentAutopilot";
+		internal static readonly string[] MechJebTypeAliases = { "MuMech.MechJebModuleAscentSettings" };
 
 		// Fields and methods
 		private static FieldInfo status;
+		private static FieldInfo ascentTypeInteger;
 		private static PropertyInfo ascentPathIdx;
+		private static PropertyInfo ascentAutopilot;
 		private static FieldInfo desiredOrbitAltitudeField;
 		private static FieldInfo autoThrottle;
 		private static FieldInfo correctiveSteering;
@@ -69,10 +73,14 @@ namespace KRPC.MechJeb {
 		private object warpCountDown;
 
 		internal static new void InitType(Type type) {
-			status = type.GetCheckedField("status");
-			ascentPathIdx = type.GetCheckedProperty("ascentPathIdxPublic");
+			ascentAutopilot = type.GetOptionalProperty("AscentAutopilot");
+			Type autopilotType = ascentAutopilot != null ? ascentAutopilot.PropertyType : type;
+
+			status = autopilotType.GetCheckedField("status");
+			ascentTypeInteger = type.GetOptionalField("AscentTypeInteger");
+			ascentPathIdx = type.GetOptionalProperty("ascentPathIdxPublic");
 			desiredOrbitAltitudeField = type.GetCheckedField("desiredOrbitAltitude");
-			autoThrottle = type.GetCheckedField("autoThrottle");
+			autoThrottle = type.GetOptionalField("autoThrottle");
 			correctiveSteering = type.GetCheckedField("correctiveSteering");
 			correctiveSteeringGainField = type.GetCheckedField("correctiveSteeringGain");
 			forceRoll = type.GetCheckedField("forceRoll");
@@ -89,8 +97,8 @@ namespace KRPC.MechJeb {
 			launchLANDifferenceField = type.GetCheckedField("launchLANDifference");
 			warpCountDownField = type.GetCheckedField("warpCountDown");
 
-			timedLaunch = type.GetCheckedField("timedLaunch");
-			startCountdown = type.GetCheckedMethod("StartCountdown");
+			timedLaunch = autopilotType.GetCheckedField("timedLaunch");
+			startCountdown = autopilotType.GetCheckedMethod("StartCountdown");
 		}
 
 		protected internal override void InitInstance(object instance) {
@@ -127,7 +135,16 @@ namespace KRPC.MechJeb {
 		/// The autopilot status; it depends on the selected ascent path.
 		/// </summary>
 		[KRPCProperty]
-		public string Status => status.GetValue(this.instance).ToString();
+		public string Status => status.GetValue(this.CurrentAutopilotInstance).ToString();
+
+		[KRPCProperty]
+		public override bool Enabled {
+			get => GetModuleEnabled(this.CurrentAutopilotInstance);
+			set {
+				object currentAutopilot = this.CurrentAutopilotInstance;
+				SetModuleEnabled(currentAutopilot, GetUsers(currentAutopilot), this, value);
+			}
+		}
 
 		/// <summary>
 		/// The selected ascent path.
@@ -140,14 +157,26 @@ namespace KRPC.MechJeb {
 		/// </summary>
 		[KRPCProperty]
 		public int AscentPathIndex {
-			get => (int)ascentPathIdx.GetValue(this.instance, null);
+			get {
+				int index = ascentTypeInteger != null ? (int)ascentTypeInteger.GetValue(this.instance) : (int)ascentPathIdx.GetValue(this.instance, null);
+				return ascentTypeInteger != null && index == 1 ? 2 : index;
+			}
 			set {
 				if(value < 0 || value > 2)
 					return;
 
-				ascentPathIdx.SetValue(this.instance, value, null);
+				if(ascentTypeInteger != null) {
+					if(value == 1)
+						throw new MJServiceException("This feature is not available in this MechJeb version: AscentGT");
+
+					ascentTypeInteger.SetValue(this.instance, value == 2 ? 1 : value);
+				}
+				else
+					ascentPathIdx.SetValue(this.instance, value, null);
 			}
 		}
+
+		private object CurrentAutopilotInstance => ascentAutopilot != null ? ascentAutopilot.GetValue(this.instance, null) : this.instance;
 
 		/// <summary>
 		/// Get Classic Ascent Profile settings.
@@ -332,7 +361,7 @@ namespace KRPC.MechJeb {
 		[KRPCProperty]
 		public AscentLaunchMode LaunchMode {
 			get {
-				if(!(bool)timedLaunch.GetValue(this.instance))
+				if(!(bool)timedLaunch.GetValue(this.CurrentAutopilotInstance))
 					return AscentLaunchMode.Normal;
 				if((bool)AscentGuidance.launchingToRendezvous.GetValue(this.guiInstance))
 					return AscentLaunchMode.Rendezvous;
@@ -352,11 +381,11 @@ namespace KRPC.MechJeb {
 
 			AscentGuidance.launchingToPlane.SetValue(this.guiInstance, false);
 			AscentGuidance.launchingToRendezvous.SetValue(this.guiInstance, false);
-			timedLaunch.SetValue(this.instance, false);
+			timedLaunch.SetValue(this.CurrentAutopilotInstance, false);
 		}
 
 		private void StartCountdown(double timeOffset) {
-			startCountdown.Invoke(this.instance, new object[] { MechJeb.vesselState.Time + timeOffset });
+			startCountdown.Invoke(this.CurrentAutopilotInstance, new object[] { MechJeb.vesselState.Time + timeOffset });
 		}
 
 		/// <summary>

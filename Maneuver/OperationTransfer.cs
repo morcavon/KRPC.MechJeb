@@ -17,24 +17,30 @@ namespace KRPC.MechJeb.Maneuver {
 
 		// Fields and methods
 		private static FieldInfo interceptOnly;
+		private static FieldInfo planCapture;
 		private static FieldInfo periodOffsetField;
+		private static FieldInfo lagTimeField;
 		private static FieldInfo simpleTransfer;
+		private static FieldInfo coplanar;
 		private static FieldInfo timeSelector;
 
 		// Instance objects
 		private object periodOffset;
 
 		internal static new void InitType(Type type) {
-			interceptOnly = type.GetCheckedField("intercept_only");
-			periodOffsetField = type.GetCheckedField("periodOffset");
-			simpleTransfer = type.GetCheckedField("simpleTransfer");
+			interceptOnly = type.GetOptionalField("intercept_only");
+			planCapture = type.GetOptionalField("PlanCapture");
+			periodOffsetField = type.GetOptionalField("periodOffset");
+			lagTimeField = type.GetOptionalField("LagTime");
+			simpleTransfer = type.GetOptionalField("simpleTransfer");
+			coplanar = type.GetOptionalField("Coplanar");
 			timeSelector = GetTimeSelectorField(type);
 		}
 
 		protected internal override void InitInstance(object instance) {
 			base.InitInstance(instance);
 
-			this.periodOffset = periodOffsetField.GetInstanceValue(instance);
+			this.periodOffset = (periodOffsetField ?? lagTimeField).GetInstanceValue(instance);
 			this.InitTimeSelector(timeSelector);
 		}
 
@@ -43,8 +49,17 @@ namespace KRPC.MechJeb.Maneuver {
 		/// </summary>
 		[KRPCProperty]
 		public bool InterceptOnly {
-			get => (bool)interceptOnly.GetValue(this.instance);
-			set => interceptOnly.SetValue(this.instance, value);
+			get {
+				if(interceptOnly != null)
+					return (bool)interceptOnly.GetValue(this.instance);
+				return planCapture != null && !(bool)planCapture.GetValue(this.instance);
+			}
+			set {
+				if(interceptOnly != null)
+					interceptOnly.SetValue(this.instance, value);
+				else if(planCapture != null)
+					planCapture.SetValue(this.instance, !value);
+			}
 		}
 
 		/// <summary>
@@ -63,8 +78,17 @@ namespace KRPC.MechJeb.Maneuver {
 		/// <remarks>If set to true, TimeSelector property is ignored.</remarks>
 		[KRPCProperty]
 		public bool SimpleTransfer {
-			get => (bool)simpleTransfer.GetValue(this.instance);
-			set => simpleTransfer.SetValue(this.instance, value);
+			get {
+				if(simpleTransfer != null)
+					return (bool)simpleTransfer.GetValue(this.instance);
+				return coplanar != null && (bool)coplanar.GetValue(this.instance);
+			}
+			set {
+				if(simpleTransfer != null)
+					simpleTransfer.SetValue(this.instance, value);
+				else if(coplanar != null)
+					coplanar.SetValue(this.instance, value);
+			}
 		}
 	}
 }

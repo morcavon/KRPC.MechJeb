@@ -20,44 +20,75 @@ namespace KRPC.MechJeb {
 		private static Type type;
 		private static FieldInfo vesselStateField;
 		private static MethodInfo getComputerModule;
+		private static readonly Dictionary<string, string[]> moduleAliases = new Dictionary<string, string[]> {
+			{ "AscentAutopilot", new[] { "AscentAutopilot", "AscentSettings" } },
+			{ "AscentGuidance", new[] { "AscentGuidance", "AscentSettings" } },
+			{ "AscentClassic", new[] { "AscentClassic", "AscentSettings" } },
+			{ "AscentGT", new[] { "AscentGT", "AscentSettings" } },
+			{ "AscentPVG", new[] { "AscentPVG", "AscentSettings" } }
+		};
 
 		internal static readonly VesselState vesselState = new VesselState();
 		private static readonly Dictionary<string, Module> modules = new Dictionary<string, Module>();
 
 		internal static bool InitTypes() {
 			try {
-				// Scan the project assembly for MechJeb 2 reflection classes
-				Dictionary<string, Type> mechjebTypes = new Dictionary<string, Type>();
+				// Scan the project assembly for MechJeb 2 reflection classes.
+				Dictionary<Type, string[]> mechjebTypes = new Dictionary<Type, string[]>();
+				Dictionary<Type, bool> optionalTypes = new Dictionary<Type, bool>();
 				foreach(Type t in Assembly.GetExecutingAssembly().GetTypes()) {
 					FieldInfo mechjebTypeField = t.GetField("MechJebType", BindingFlags.NonPublic | BindingFlags.Static);
 					if(mechjebTypeField != null) {
 						string mechjebType = (string)mechjebTypeField.GetValue(null);
-						Logger.Debug("Found class " + t.Name + " wanting to use " + mechjebType);
-						mechjebTypes.Add(mechjebType, t);
+						List<string> wantedTypes = new List<string> { mechjebType };
+						FieldInfo aliasesField = t.GetField("MechJebTypeAliases", BindingFlags.NonPublic | BindingFlags.Static);
+						if(aliasesField != null)
+							wantedTypes.AddRange((string[])aliasesField.GetValue(null));
+
+						FieldInfo optionalField = t.GetField("MechJebTypeOptional", BindingFlags.NonPublic | BindingFlags.Static);
+						optionalTypes[t] = optionalField != null && (bool)optionalField.GetValue(null);
+
+						Logger.Debug("Found class " + t.Name + " wanting to use " + string.Join(", ", wantedTypes.ToArray()));
+						mechjebTypes.Add(t, wantedTypes.ToArray());
 					}
 				}
 
-				// Scan all assemblies to match kRPC classes to MechJeb 2
+				Dictionary<string, Type> availableTypes = new Dictionary<string, Type>();
 				AssemblyLoader.loadedAssemblies.TypeOperation(mechjebType => {
-					if(mechjebTypes.TryGetValue(mechjebType.FullName, out Type internalType)) {
-						try {
-							Logger.Debug("Loading class " + internalType.Name + " using " + mechjebType.FullName);
-							internalType.GetMethod("InitType", BindingFlags.NonPublic | BindingFlags.Static).Invoke(null, new object[] { mechjebType });
-							mechjebTypes.Remove(mechjebType.FullName);
-						}
-						catch(Exception ex) {
-							string error = "Cannot load class " + internalType.Name;
-							Logger.Severe(error, ex);
-							errors.Add(error);
-						}
-					}
+					if(!availableTypes.ContainsKey(mechjebType.FullName))
+						availableTypes.Add(mechjebType.FullName, mechjebType);
 				});
 
-				// Check if all classes have been initialized
-				foreach(KeyValuePair<string, Type> p in mechjebTypes) {
-					string error = "Cannot load class " + p.Value.Name;
-					Logger.Severe(error + " because " + p.Key + " was not found");
-					errors.Add(error);
+				foreach(KeyValuePair<Type, string[]> p in mechjebTypes) {
+					Type internalType = p.Key;
+					Type mechjebType = null;
+					string matchedName = null;
+
+					foreach(string wantedType in p.Value)
+						if(availableTypes.TryGetValue(wantedType, out mechjebType)) {
+							matchedName = wantedType;
+							break;
+						}
+
+					if(mechjebType == null) {
+						if(optionalTypes[internalType])
+							continue;
+
+						string error = "Cannot load class " + internalType.Name;
+						Logger.Severe(error + " because " + string.Join(", ", p.Value) + " was not found");
+						errors.Add(error);
+						continue;
+					}
+
+					try {
+						Logger.Debug("Loading class " + internalType.Name + " using " + matchedName);
+						internalType.GetMethod("InitType", BindingFlags.NonPublic | BindingFlags.Static).Invoke(null, new object[] { mechjebType });
+					}
+					catch(Exception ex) {
+						string error = "Cannot load class " + internalType.Name;
+						Logger.Severe(error, ex);
+						errors.Add(error);
+					}
 				}
 			}
 			catch(Exception ex) {
@@ -142,11 +173,15 @@ namespace KRPC.MechJeb {
 		}
 
 		internal static object GetComputerModule(string moduleType) {
-			object module = getComputerModule.Invoke(MasterInstance, new object[] { "MechJebModule" + moduleType });
-			if(module == null)
-				Logger.Severe("MechJeb module " + moduleType + " not found");
+			string[] candidates = moduleAliases.TryGetValue(moduleType, out string[] aliases) ? aliases : new[] { moduleType };
+			foreach(string candidate in candidates) {
+				object module = getComputerModule.Invoke(MasterInstance, new object[] { "MechJebModule" + candidate });
+				if(module != null)
+					return module;
+			}
 
-			return module;
+			Logger.Severe("MechJeb module " + moduleType + " not found");
+			return null;
 		}
 
 		internal static PartModule MasterInstance { get; private set; }

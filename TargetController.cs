@@ -33,6 +33,7 @@ namespace KRPC.MechJeb {
 		private static PropertyInfo relativePosition;
 		//private static PropertyInfo transform;
 		private static PropertyInfo dockingAxis;
+		internal static FieldInfo targetLongitude;
 
 		internal static new void InitType(Type type) {
 			setPositionTarget = type.GetCheckedMethod("SetPositionTarget");
@@ -53,6 +54,7 @@ namespace KRPC.MechJeb {
 			relativePosition = type.GetCheckedProperty("RelativePosition");
 			//transform = type.GetProperty("Transform");
 			dockingAxis = type.GetCheckedProperty("DockingAxis");
+			targetLongitude = type.GetOptionalField("targetLongitude");
 		}
 
 		[KRPCMethod]
@@ -113,5 +115,7 @@ namespace KRPC.MechJeb {
 
 		[KRPCProperty]
 		public Tuple3 DockingAxis => ((Vector3)dockingAxis.GetValue(this.instance, null)).ToTuple();
+
+		internal object TargetLongitude => targetLongitude.GetInstanceValue(this.instance);
 	}
 }

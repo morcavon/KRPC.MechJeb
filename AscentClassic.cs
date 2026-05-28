@@ -11,6 +11,7 @@ namespace KRPC.MechJeb {
 	[KRPCClass(Service = "MechJeb")]
 	public class AscentClassic : AscentBase {
 		internal new const string MechJebType = "MuMech.MechJebModuleAscentClassic";
+		internal static readonly string[] MechJebTypeAliases = { "MuMech.MechJebModuleAscentSettings" };
 
 		// Fields and methods
 		private static FieldInfo turnStartAltitudeField;
@@ -129,12 +130,12 @@ namespace KRPC.MechJeb {
 		}
 
 		[KRPCProperty]
-		public double AutoTurnStartAltitude => EditableDouble.Get(autoTurnStartAltitude);
+		public double AutoTurnStartAltitude => (double)autoTurnStartAltitude.GetValue(this.instance, null);
 
 		[KRPCProperty]
-		public double AutoTurnStartVelocity => EditableDouble.Get(autoTurnStartVelocity);
+		public double AutoTurnStartVelocity => (double)autoTurnStartVelocity.GetValue(this.instance, null);
 
 		[KRPCProperty]
-		public double AutoTurnEndAltitude => EditableDouble.Get(autoTurnEndAltitude);
+		public double AutoTurnEndAltitude => (double)autoTurnEndAltitude.GetValue(this.instance, null);
 	}
 }

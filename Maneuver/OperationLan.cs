@@ -20,21 +20,26 @@ namespace KRPC.MechJeb.Maneuver {
 		private object newLAN;
 
 		internal static new void InitType(Type type) {
-			newLANField = type.GetCheckedField("newLAN");
+			newLANField = type.GetOptionalField("newLAN");
 			timeSelector = GetTimeSelectorField(type);
 		}
 
 		protected internal override void InitInstance(object instance) {
 			base.InitInstance(instance);
 
-			this.newLAN = newLANField.GetInstanceValue(instance);
+			this.newLAN = newLANField.GetInstanceValue(instance) ?? MechJeb.TargetController.TargetLongitude;
 			this.InitTimeSelector(timeSelector);
 		}
 
 		[KRPCProperty]
 		public double NewLAN {
-			get => EditableDouble.Get(this.newLAN);
-			set => EditableDouble.Set(this.newLAN, value);
+			get => newLANField != null ? EditableDouble.Get(this.newLAN) : EditableAngle.Get(this.newLAN);
+			set {
+				if(newLANField != null)
+					EditableDouble.Set(this.newLAN, value);
+				else
+					EditableAngle.Set(this.newLAN, value);
+			}
 		}
 	}
 }

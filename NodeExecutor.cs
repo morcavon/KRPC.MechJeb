@@ -25,7 +25,7 @@ namespace KRPC.MechJeb {
 		internal static new void InitType(Type type) {
 			autowarp = type.GetCheckedField("autowarp");
 			leadTimeField = type.GetCheckedField("leadTime");
-			toleranceField = type.GetCheckedField("tolerance");
+			toleranceField = type.GetOptionalField("tolerance");
 
 			executeOneNode = type.GetCheckedMethod("ExecuteOneNode");
 			executeAllNodes = type.GetCheckedMethod("ExecuteAllNodes");
@@ -56,8 +56,18 @@ namespace KRPC.MechJeb {
 
 		[KRPCProperty]
 		public double Tolerance {
-			get => EditableDouble.Get(this.tolerance);
-			set => EditableDouble.Set(this.tolerance, value);
+			get {
+				if(this.tolerance == null)
+					throw new MJServiceException("This feature is not available in this MechJeb version: " + nameof(Tolerance));
+
+				return EditableDouble.Get(this.tolerance);
+			}
+			set {
+				if(this.tolerance == null)
+					throw new MJServiceException("This feature is not available in this MechJeb version: " + nameof(Tolerance));
+
+				EditableDouble.Set(this.tolerance, value);
+			}
 		}
 
 		[KRPCMethod]
